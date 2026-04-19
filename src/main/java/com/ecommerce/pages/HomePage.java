@@ -1,56 +1,60 @@
 package com.ecommerce.pages;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+
 import java.time.Duration;
 
 public class HomePage {
-    WebDriver driver;
-    WebDriverWait wait;
-    
+    private WebDriver driver;
+    private WebDriverWait wait;
+
+    private By appLogo = By.className("app_logo");
+    private By cartLink = By.className("shopping_cart_link");
+    private By menuButton = By.id("react-burger-menu-btn");
+    private By logoutLink = By.id("logout_sidebar_link");
+
     public HomePage(WebDriver driver) {
         this.driver = driver;
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(20));
     }
-    
+
     public boolean isHomePageDisplayed() {
         try {
-            wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("app_logo")));
-            System.out.println("✅ Home page verified!");
+            wait.until(ExpectedConditions.visibilityOfElementLocated(appLogo));
+            System.out.println("Home page verified!");
             return true;
         } catch (Exception e) {
-            System.out.println("❌ Home page not displayed");
+            System.out.println("Home page not displayed");
             return false;
         }
     }
-    
+
     public void goToCart() {
-        System.out.println("🛒 Navigating to cart...");
-        sleep(1000);
-        wait.until(ExpectedConditions.elementToBeClickable(By.className("shopping_cart_link")));
-        driver.findElement(By.className("shopping_cart_link")).click();
-        sleep(1500);
-        System.out.println("✅ Cart page opened");
-    }
-    
-    public void logout() {
-        System.out.println("🚪 Logging out...");
-        wait.until(ExpectedConditions.elementToBeClickable(By.id("react-burger-menu-btn")));
-        driver.findElement(By.id("react-burger-menu-btn")).click();
-        sleep(1000);
-        wait.until(ExpectedConditions.elementToBeClickable(By.id("logout_sidebar_link")));
-        driver.findElement(By.id("logout_sidebar_link")).click();
-        System.out.println("✅ Logged out");
-        sleep(1500);
-    }
-    
-    private void sleep(long millis) {
+        System.out.println("Navigating to cart...");
+
+        WebElement cart = wait.until(ExpectedConditions.elementToBeClickable(cartLink));
+
         try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            cart.click();
+        } catch (Exception e) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", cart);
         }
+
+        wait.until(ExpectedConditions.urlContains("cart"));
+        System.out.println("Cart page opened");
+    }
+
+    public void logout() {
+        System.out.println("Logging out...");
+
+        wait.until(ExpectedConditions.elementToBeClickable(menuButton)).click();
+        wait.until(ExpectedConditions.elementToBeClickable(logoutLink)).click();
+
+        System.out.println("Logged out");
     }
 }
