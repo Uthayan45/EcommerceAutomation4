@@ -11,6 +11,10 @@ import org.testng.annotations.Test;
 
 public class ProductFlowTest extends BaseTest {
 
+    private static final String USERNAME = "standard_user";
+    private static final String PASSWORD = "secret_sauce";
+    private static final String PRODUCT_NAME = "Sauce Labs Backpack";
+
     @Test
     public void testSearchAndFilter() {
         System.out.println("\n" + "=".repeat(60));
@@ -18,13 +22,14 @@ public class ProductFlowTest extends BaseTest {
         System.out.println("=".repeat(60));
 
         LoginPage loginPage = new LoginPage(driver);
-        loginPage.login("standard_user", "secret_sauce");
+        loginPage.login(USERNAME, PASSWORD);
 
         HomePage homePage = new HomePage(driver);
         Assert.assertTrue(homePage.isHomePageDisplayed(), "Home page not loaded!");
 
         SearchPage searchPage = new SearchPage(driver);
         searchPage.applyFilter("Price (high to low)");
+        sleep(2000);
 
         int productCount = searchPage.getProductCount();
         Assert.assertTrue(productCount > 0, "No products found!");
@@ -40,21 +45,22 @@ public class ProductFlowTest extends BaseTest {
         System.out.println("=".repeat(60));
 
         LoginPage loginPage = new LoginPage(driver);
-        loginPage.login("standard_user", "secret_sauce");
+        loginPage.login(USERNAME, PASSWORD);
 
         HomePage homePage = new HomePage(driver);
         Assert.assertTrue(homePage.isHomePageDisplayed(), "Home page not loaded!");
 
         SearchPage searchPage = new SearchPage(driver);
-        String productName = "Sauce Labs Backpack";
+        Assert.assertTrue(searchPage.isProductDisplayed(PRODUCT_NAME), "Product not found!");
 
-        Assert.assertTrue(searchPage.isProductDisplayed(productName), "Product not found!");
-        searchPage.addToCart(productName);
+        searchPage.addToCart(PRODUCT_NAME);
+        sleep(2000);
 
         homePage.goToCart();
+        sleep(2000);
 
         CartPage cartPage = new CartPage(driver);
-        Assert.assertTrue(cartPage.isProductInCart(productName), "Product not in cart!");
+        Assert.assertTrue(cartPage.isProductInCart(PRODUCT_NAME), "Product not in cart!");
 
         System.out.println("\nTEST PASSED: Product added to cart successfully!\n");
         sleep(2000);
@@ -67,26 +73,31 @@ public class ProductFlowTest extends BaseTest {
         System.out.println("=".repeat(60));
 
         LoginPage loginPage = new LoginPage(driver);
-        loginPage.login("standard_user", "secret_sauce");
+        loginPage.login(USERNAME, PASSWORD);
 
         HomePage homePage = new HomePage(driver);
         Assert.assertTrue(homePage.isHomePageDisplayed(), "Home page not loaded!");
 
         SearchPage searchPage = new SearchPage(driver);
-        String productName = "Sauce Labs Backpack";
+        Assert.assertTrue(searchPage.isProductDisplayed(PRODUCT_NAME), "Product not found!");
 
-        Assert.assertTrue(searchPage.isProductDisplayed(productName), "Product not found!");
-        searchPage.addToCart(productName);
+        searchPage.addToCart(PRODUCT_NAME);
+        sleep(2000);
 
         homePage.goToCart();
+        sleep(2000);
 
         CartPage cartPage = new CartPage(driver);
-        Assert.assertTrue(cartPage.isProductInCart(productName), "Product not found in cart before checkout!");
+        Assert.assertTrue(cartPage.isProductInCart(PRODUCT_NAME), "Product not found in cart before checkout!");
+
         cartPage.proceedToCheckout();
+        sleep(2000);
 
         CheckoutPage checkoutPage = new CheckoutPage(driver);
         checkoutPage.enterCheckoutDetails("John", "Doe", "12345");
+        sleep(1000);
         checkoutPage.finishCheckout();
+        sleep(2000);
 
         Assert.assertTrue(checkoutPage.isCheckoutSuccessful(), "Checkout failed!");
 
