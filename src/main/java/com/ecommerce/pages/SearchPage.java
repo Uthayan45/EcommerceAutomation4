@@ -25,10 +25,12 @@ public class SearchPage {
 
     public void applyFilter(String filterValue) {
         System.out.println("Applying filter: " + filterValue);
+
         WebElement dropdownElement = wait.until(
                 ExpectedConditions.elementToBeClickable(sortDropdown));
         Select dropdown = new Select(dropdownElement);
         dropdown.selectByVisibleText(filterValue);
+
         wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(inventoryItems));
         System.out.println("Filter applied: " + filterValue);
     }
@@ -36,7 +38,7 @@ public class SearchPage {
     public void addToCart(String productName) {
         System.out.println("Adding product to cart: " + productName);
 
-        // Wait until products are visible
+        // Jenkins slow-va irukkum pothu items load aaga wait pannanum
         List<WebElement> items = wait.until(
                 ExpectedConditions.visibilityOfAllElementsLocatedBy(inventoryItems));
 
@@ -47,31 +49,49 @@ public class SearchPage {
 
             if (name.equalsIgnoreCase(productName)) {
                 productFound = true;
-                WebElement addToCartButton = item.findElement(By.tagName("button"));
+                WebElement actionButton = item.findElement(By.tagName("button"));
 
-                // Scroll element to middle of the screen to avoid Jenkins overlay issues
-                ((JavascriptExecutor) driver).executeScript(
-                        "arguments[0].scrollIntoView({block:'center'});", addToCartButton);
-
-                // Adding a small sync sleep for Jenkins environment stability
-                try { Thread.sleep(500); } catch (InterruptedException e) {}
-
-                // Try regular click, if fails use Javascript Click
-                try {
-                    addToCartButton.click();
-                } catch (Exception e) {
-                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addToCartButton);
+                // 1. Safety Check: Already cart-la iruntha thirumba click panna koodathu (Toggle prevention)
+                String currentText = actionButton.getText().toLowerCase();
+                if (currentText.contains("remove")) {
+                    System.out.println("Product '" + productName + "' is already in cart. Skipping click.");
+                    return;
                 }
 
-                // FIXED WAIT: Custom lambda to check if button text changed to 'Remove'
-                // This is more reliable than standard ExpectedConditions in Jenkins
-                wait.until(d -> {
-                    String btnText = addToCartButton.getText().toLowerCase();
-                    return btnText.contains("remove");
-                });
+                // 2. Element-ai screen-ku naduvula kondu varuvom (Overlap-ai thavirkka)
+                ((JavascriptExecutor) driver).executeScript(
+                        "arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", actionButton);
 
-                System.out.println("Added to cart: " + productName);
-                return;
+                // Oru chinna break - element settle aaga
+                try { Thread.sleep(1000); } catch (InterruptedException e) {}
+
+                // 3. JavaScript Click: Jenkins environment-la ithu thaan romba stable
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", actionButton);
+                System.out.println("JS Click performed for: " + productName);
+
+                // 4. Retry Mechanism: Button text maarura varai wait pannuvom
+                boolean isUpdated = false;
+                for (int retry = 0; retry < 5; retry++) {
+                    try {
+                        String btnText = actionButton.getText().toLowerCase();
+                        if (btnText.contains("remove")) {
+                            isUpdated = true;
+                            break;
+                        }
+                        // Text maaralana, thirumba oru JS click
+                        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", actionButton);
+                    } catch (Exception e) {
+                        // Element state change aana error varalaam, so catch and retry
+                    }
+                    try { Thread.sleep(2000); } catch (InterruptedException e) {}
+                }
+
+                if (isUpdated) {
+                    System.out.println("Added to cart successfully: " + productName);
+                    return;
+                } else {
+                    throw new RuntimeException("FAILED: Button did not change to 'Remove' for " + productName);
+                }
             }
         }
 
@@ -87,14 +107,18 @@ public class SearchPage {
 
         for (WebElement product : products) {
             if (product.getText().trim().equalsIgnoreCase(productName)) {
+                System.out.println("Product found on page: " + productName);
                 return true;
             }
         }
         return false;
     }
+
     public int getProductCount() {
         List<WebElement> items = wait.until(
                 ExpectedConditions.visibilityOfAllElementsLocatedBy(inventoryItems));
-        return items.size();
+        int count = items.size();
+        System.out.println("Total products visible: " + count);
+        return count;
     }
 }
