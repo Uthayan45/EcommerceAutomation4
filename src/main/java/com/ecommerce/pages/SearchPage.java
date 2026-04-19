@@ -92,7 +92,6 @@ public class SearchPage {
         }
         return false;
     }
-
     public int getProductCount() {
         List<WebElement> items = wait.until(
                 ExpectedConditions.visibilityOfAllElementsLocatedBy(inventoryItems));
