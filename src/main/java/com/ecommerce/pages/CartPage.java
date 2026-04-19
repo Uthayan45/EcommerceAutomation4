@@ -2,13 +2,13 @@ package com.ecommerce.pages;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
+import java.util.List;
 
 public class CartPage {
 
@@ -16,6 +16,7 @@ public class CartPage {
     private WebDriverWait wait;
 
     private By cartPageTitle = By.className("title");
+    private By cartItems = By.className("cart_item");
     private By checkoutButton = By.id("checkout");
 
     public CartPage(WebDriver driver) {
@@ -24,21 +25,31 @@ public class CartPage {
     }
 
     public boolean isProductInCart(String productName) {
-        By productLocator = By.xpath("//div[@class='inventory_item_name' and text()='" + productName + "']");
         wait.until(ExpectedConditions.visibilityOfElementLocated(cartPageTitle));
-        return !driver.findElements(productLocator).isEmpty();
+        wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(cartItems));
+
+        List<WebElement> items = driver.findElements(cartItems);
+
+        for (WebElement item : items) {
+            String name = item.findElement(By.className("inventory_item_name")).getText().trim();
+            if (name.equalsIgnoreCase(productName)) {
+                System.out.println("Product found in cart: " + productName);
+                return true;
+            }
+        }
+
+        System.out.println("Product not found in cart: " + productName);
+        return false;
     }
 
     public void proceedToCheckout() {
         wait.until(ExpectedConditions.visibilityOfElementLocated(cartPageTitle));
 
-        WebElement checkout = wait.until(ExpectedConditions.presenceOfElementLocated(checkoutButton));
+        WebElement checkout = wait.until(
+                ExpectedConditions.elementToBeClickable(checkoutButton));
 
         ((JavascriptExecutor) driver).executeScript(
                 "arguments[0].scrollIntoView({block:'center'});", checkout);
-
-        wait.until(ExpectedConditions.visibilityOf(checkout));
-        wait.until(ExpectedConditions.elementToBeClickable(checkout));
 
         try {
             checkout.click();
