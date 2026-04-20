@@ -22,9 +22,11 @@ public class BaseTest {
         options.addArguments("--disable-notifications");
         options.addArguments("--remote-allow-origins=*");
         options.addArguments("--start-maximized");
+        options.addArguments("--disable-blink-features=AutomationControlled");
 
         driver = new ChromeDriver(options);
         driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
 
         System.out.println("📍 Navigating to SauceDemo...");
         driver.get("https://www.saucedemo.com/");

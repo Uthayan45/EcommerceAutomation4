@@ -20,7 +20,7 @@ public class SearchPage {
 
     public SearchPage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(30)); // Timeout increased to 30s
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
     }
 
     public void applyFilter(String filterValue) {
@@ -35,48 +35,74 @@ public class SearchPage {
     public void addToCart(String productName) {
         System.out.println("Attempting to add: " + productName);
 
-        // Jenkins stabilization wait
-        try { Thread.sleep(2000); } catch (Exception e) {}
+        // Small wait for page stabilization
+        sleep(1000);
 
+        // Find all product items
         List<WebElement> items = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(inventoryItems));
 
-        for (WebElement item : items) {
+        boolean productFound = false;
+
+        for (int i = 0; i < items.size(); i++) {
+            // Re-find items each iteration to avoid stale elements
+            List<WebElement> freshItems = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(inventoryItems));
+            WebElement item = freshItems.get(i);
+
             String name = item.findElement(By.className("inventory_item_name")).getText().trim();
 
             if (name.equalsIgnoreCase(productName)) {
+                productFound = true;
+
+                // Re-find the button fresh each time
                 WebElement actionButton = item.findElement(By.tagName("button"));
 
-                // Safety: Check if already added
+                // Check if already in cart
                 if (actionButton.getText().toLowerCase().contains("remove")) {
                     System.out.println(productName + " already in cart.");
                     return;
                 }
 
-                // Force Scroll
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", actionButton);
-                try { Thread.sleep(1000); } catch (Exception e) {}
+                // Scroll to element
+                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", actionButton);
+                sleep(500);
 
-                // THE FIX: Direct JS Click with built-in retry
-                for (int i = 0; i < 3; i++) {
-                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", actionButton);
-                    System.out.println("Click Attempt " + (i + 1) + " for: " + productName);
-
+                // Click using JavaScript with retry mechanism
+                boolean added = false;
+                for (int attempt = 1; attempt <= 3; attempt++) {
                     try {
-                        // Wait up to 5 seconds for the text to change per attempt
-                        new WebDriverWait(driver, Duration.ofSeconds(5)).until(d -> {
-                            return actionButton.getText().toLowerCase().contains("remove");
-                        });
-                        System.out.println("Successfully added: " + productName);
-                        return; // Exit if success
+                        System.out.println("Click attempt " + attempt + " for: " + productName);
+
+                        // Re-find the button fresh before each click attempt
+                        WebElement freshButton = driver.findElement(By.xpath("//div[contains(@class,'inventory_item')]//div[contains(text(),'" + productName + "')]/following::button[1]"));
+                        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", freshButton);
+
+                        // Wait for button text to change to "Remove"
+                        sleep(1500);
+
+                        // Verify success by checking if button now says "Remove"
+                        WebElement verifyButton = driver.findElement(By.xpath("//div[contains(@class,'inventory_item')]//div[contains(text(),'" + productName + "')]/following::button[1]"));
+                        if (verifyButton.getText().toLowerCase().contains("remove")) {
+                            System.out.println("Successfully added: " + productName);
+                            added = true;
+                            break;
+                        }
                     } catch (Exception e) {
-                        System.out.println("Waiting for button state change...");
+                        System.out.println("Attempt " + attempt + " failed, retrying...");
+                        sleep(500);
                     }
                 }
 
-                throw new RuntimeException("CRITICAL FAILURE: Button did not toggle to 'Remove' for " + productName);
+                if (added) {
+                    return;
+                } else {
+                    throw new RuntimeException("Failed to add product to cart: " + productName);
+                }
             }
         }
-        throw new RuntimeException("Product not found: " + productName);
+
+        if (!productFound) {
+            throw new RuntimeException("Product not found: " + productName);
+        }
     }
 
     public boolean isProductDisplayed(String productName) {
@@ -89,5 +115,13 @@ public class SearchPage {
 
     public int getProductCount() {
         return wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(inventoryItems)).size();
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
